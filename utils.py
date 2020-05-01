@@ -9,6 +9,7 @@ import multiprocessing
 import multiprocessing.sharedctypes as sharedctypes
 import os.path
 import ast
+from pandas.api.types import CategoricalDtype
 
 
 # Number of samples per 30s audio clip.
@@ -75,7 +76,7 @@ class FreeMusicArchive:
     def get_all(self, dataset, id_range):
         index = dataset + '_id'
 
-        id_ = 2 if dataset is 'track' else 1
+        id_ = 2 if dataset == 'track' else 1
         row = self._get_data(dataset, id_)
         df = pd.DataFrame(columns=row.keys())
         df.set_index(index, inplace=True)
@@ -89,7 +90,7 @@ class FreeMusicArchive:
                 not_found_ids.append(id_)
                 continue
             row.pop(index)
-            df = df.append(pd.Series(row, name=id_))
+            df.loc[id_] = row
 
         return df, not_found_ids
 
@@ -197,8 +198,7 @@ def load(filepath):
         tracks = pd.read_csv(filepath, index_col=0, header=[0, 1])
 
         COLUMNS = [('track', 'tags'), ('album', 'tags'), ('artist', 'tags'),
-                   ('track', 'genres'), ('track', 'genres_all'),
-                   ('track', 'genres_top')]
+                   ('track', 'genres'), ('track', 'genres_all')]
         for column in COLUMNS:
             tracks[column] = tracks[column].map(ast.literal_eval)
 
@@ -211,10 +211,11 @@ def load(filepath):
 
         SUBSETS = ('small', 'medium', 'large')
         tracks['set', 'subset'] = tracks['set', 'subset'].astype(
-                'category', categories=SUBSETS, ordered=True)
+                'category', CategoricalDtype(categories=SUBSETS))
 
-        COLUMNS = [('track', 'license'), ('artist', 'bio'),
-                   ('album', 'type'), ('album', 'information')]
+        COLUMNS = [('track', 'genre_top'), ('track', 'license'),
+                   ('album', 'type'), ('album', 'information'),
+                   ('artist', 'bio')]
         for column in COLUMNS:
             tracks[column] = tracks[column].astype('category')
 
@@ -222,39 +223,8 @@ def load(filepath):
 
 
 def get_audio_path(audio_dir, track_id):
-    """
-    Return the path to the mp3 given the directory where the audio is stored
-    and the track ID.
-
-    Examples
-    --------
-    >>> import utils
-    >>> AUDIO_DIR = os.environ.get('AUDIO_DIR')
-    >>> utils.get_audio_path(AUDIO_DIR, 2)
-    '../data/fma_small/000/000002.mp3'
-
-    """
     tid_str = '{:06d}'.format(track_id)
     return os.path.join(audio_dir, tid_str[:3], tid_str + '.mp3')
-
-
-def get_tids_from_directory(audio_dir):
-    """Get track IDs from the mp3s in a directory.
-
-    Parameters
-    ----------
-    audio_dir : str
-        Path to the directory where the audio files are stored.
-
-    Returns
-    -------
-        A list of track IDs.
-    """
-    tids = []
-    for _, dirnames, files in os.walk(audio_dir):
-        if dirnames == []:
-            tids.extend(int(file[:-4]) for file in files)
-    return tids
 
 
 class Loader:
