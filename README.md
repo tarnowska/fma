@@ -1,4 +1,4 @@
-# FMA: A Dataset For Music Analysis
+# Using FMA for music emotion recognition
 
 [Michaël Defferrard](https://deff.ch), [Kirell Benzi](https://kirellbenzi.com),
 [Pierre Vandergheynst](https://people.epfl.ch/pierre.vandergheynst),
